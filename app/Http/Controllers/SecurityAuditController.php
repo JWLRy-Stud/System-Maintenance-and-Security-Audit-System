@@ -19,6 +19,14 @@ class SecurityAuditController extends Controller
 
     public function index() { return view('audits.index', ['audits' => SecurityAudit::with('auditor')->withCount('findings')->latest()->paginate(15)]); }
 
+    /** Findings assigned to the current user (remediation owner view, any role). */
+    public function mine(Request $request)
+    {
+        $findings = AuditFinding::with('audit')->where('assigned_to', $request->user()->id)->latest()->paginate(15);
+
+        return view('audits.mine', compact('findings'));
+    }
+
     public function create() { return view('audits.create'); }
 
     public function store(Request $request)

@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\{AssetController, AuthController, DashboardController, MaintenanceController, ReportController, SecurityAuditController, UserController};
+use App\Http\Controllers\{AccountController, AssetController, AuthController, DashboardController, MaintenanceController, ReportController, SecurityAuditController, UserController};
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
@@ -9,6 +9,9 @@ Route::post('/login', [AuthController::class, 'login'])->middleware(['guest', 't
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/account/password', [AccountController::class, 'edit'])->name('account.password');
+    Route::put('/account/password', [AccountController::class, 'update'])->name('account.password.update');
+    Route::get('/my-findings', [SecurityAuditController::class, 'mine'])->name('findings.mine');
 
     // Assets: everyone reads, admin writes (create/edit routes are declared before {asset}).
     Route::middleware('role:admin')->group(function () {
