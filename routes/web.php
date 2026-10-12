@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\{AccountController, AssetController, AuthController, DashboardController, MaintenanceController, ReportController, SecurityAuditController, UserController};
+use App\Http\Controllers\{AccountController, ChecklistController, AssetController, AuthController, DashboardController, MaintenanceController, ReportController, SecurityAuditController, UserController};
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
@@ -39,6 +39,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/audits', [SecurityAuditController::class, 'store'])->name('audits.store');
         Route::get('/audits/{audit}', [SecurityAuditController::class, 'show'])->name('audits.show');
         Route::post('/audits/{audit}/complete', [SecurityAuditController::class, 'complete'])->name('audits.complete');
+        Route::get('/checklists', [ChecklistController::class, 'index'])->name('checklists.index');
+        Route::get('/checklists/create', [ChecklistController::class, 'create'])->name('checklists.create');
+        Route::post('/checklists', [ChecklistController::class, 'store'])->name('checklists.store');
+        Route::patch('/checks/{check}', [SecurityAuditController::class, 'updateCheck'])->name('checks.update');
         Route::post('/audits/{audit}/findings', [SecurityAuditController::class, 'storeFinding'])->name('findings.store');
         Route::get('/reports/findings.csv', [ReportController::class, 'findingsCsv'])->name('reports.findings');
     });

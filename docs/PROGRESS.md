@@ -5,6 +5,7 @@
 - Assets: CRUD (admin), search/filter, unique tag, retire instead of delete
 - Maintenance: request -> assign -> in progress -> completed (or cancelled), completion record, role/ownership checks
 - Security audits: audits, findings with severity/assignee/due date, finding workflow, CSV export, "My tasks" page for assignees
+- Audit checklist templates: auditors create templates (one question per line), pick one when starting an audit (questions are copied), answer pass/fail/N-A; a fail raises a linked finding; audit cannot complete while items are pending
 - Activity log (append-only, admin view with filters), dashboard, user management (deactivate), change password
 - Docs: SETUP (Ubuntu), WINDOWS_SETUP, DEPLOYMENT, AI_CONTEXT, HANDOFF_CHECKLIST
 
@@ -15,7 +16,7 @@
 - [ ] First deployment done (host: ____ )
 
 ## Known gaps / ideas (pick ONE per chat)
-1. Audit checklist templates (predefined control questions) are not implemented; findings are free-form.
+1. Checklist templates cannot be edited or deleted yet; checks have no evidence upload; changing a check from fail back to pass does not close its finding.
 2. Roles are enforced with middleware + controller checks, not Laravel Policies.
 3. No email notifications, file/evidence uploads, or pagination on the audit detail page.
 4. Activity log immutability is enforced at the model level only (production: also restrict DB grants).
