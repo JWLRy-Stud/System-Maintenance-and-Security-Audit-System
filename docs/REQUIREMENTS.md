@@ -8,6 +8,7 @@ Roles: administrator, technician, security auditor, staff (one role per user).
 | Assets | Admin creates/edits; unique asset tag; everyone can search/view; assets are retired, never deleted |
 | Maintenance | Staff/technician submit requests; admin assigns; assigned technician starts/completes (summary required); requester may cancel while open |
 | Security audits | Auditor creates audit, records findings with severity, assigns remediation owner; findings follow open→in_progress→resolved (or accepted_risk) |
+| Checklists | Auditors create reusable templates; starting an audit copies the questions; each is answered pass/fail/not applicable; a fail creates a linked finding; the audit cannot be completed with pending items |
 | Activity log | Append-only record of actor, action, target, outcome, request id; admin-only view |
 | Reports | Findings CSV export (formula-injection safe); filtered activity log |
 

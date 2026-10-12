@@ -13,9 +13,11 @@
     <div class="navbar-nav me-auto">
       <a class="nav-link" href="{{ route('assets.index') }}">Assets</a>
       @if(auth()->user()->hasRole('technician','staff'))<a class="nav-link" href="{{ route('maintenance.index') }}">Maintenance</a>@endif
-      @if(auth()->user()->hasRole('auditor'))<a class="nav-link" href="{{ route('audits.index') }}">Security Audits</a>@endif
+      @if(auth()->user()->hasRole('auditor'))<a class="nav-link" href="{{ route('audits.index') }}">Security Audits</a><a class="nav-link" href="{{ route('checklists.index') }}">Checklists</a>@endif
       @if(auth()->user()->hasRole())<a class="nav-link" href="{{ route('users.index') }}">Users</a><a class="nav-link" href="{{ route('reports.logs') }}">Activity Log</a>@endif
     </div>
+    <a class="nav-link text-white-50" href="{{ route('findings.mine') }}">My tasks</a>
+    <a class="nav-link text-white-50 me-2" href="{{ route('account.password') }}">Password</a>
     <span class="navbar-text me-3">{{ auth()->user()->name }} ({{ auth()->user()->role }})</span>
     <form method="POST" action="{{ route('logout') }}">@csrf<button class="btn btn-sm btn-outline-light">Logout</button></form>
     @endauth

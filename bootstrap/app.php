@@ -12,6 +12,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Hosting platforms terminate HTTPS at a proxy; trust it so URLs/redirects use https.
+        $middleware->trustProxies(at: '*');
         $middleware->alias(['role' => RoleMiddleware::class]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

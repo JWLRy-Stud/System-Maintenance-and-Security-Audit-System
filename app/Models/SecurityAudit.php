@@ -16,4 +16,6 @@ class SecurityAudit extends Model
     public function auditor() { return $this->belongsTo(User::class, 'auditor_id'); }
 
     public function findings() { return $this->hasMany(AuditFinding::class); }
+
+    public function checks() { return $this->hasMany(AuditCheck::class)->orderBy('position'); }
 }

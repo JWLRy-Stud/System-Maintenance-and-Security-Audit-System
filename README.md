@@ -35,4 +35,8 @@ php artisan test        # uses in-memory SQLite (needs the pdo_sqlite extension)
 - `docs/` requirements, architecture, security notes
 
 ## Repomix
+Docs: `docs/PROGRESS.md` (status), `docs/HANDOFF_CHECKLIST.md` (switching Claude accounts), `docs/DEPLOYMENT.md`.
+
+**Windows users:** see `docs/WINDOWS_SETUP.md`. **Using Claude chat:** see `docs/AI_CONTEXT.md`.
+
 `npx repomix -c repomix.config.json` produces a filtered `system.xml` snapshot (no `.env`, vendor or logs). Review it for secrets before sharing.
