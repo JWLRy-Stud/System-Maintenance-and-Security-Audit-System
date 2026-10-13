@@ -1,35 +1,137 @@
 @extends('layouts.app')
+@section('title', $audit->title)
 @section('content')
-<div class="d-flex justify-content-between"><h3>{{ $audit->title }} <span class="badge bg-secondary">{{ $audit->status }}</span></h3>
-@if($audit->status!=='completed')<form method="POST" action="{{ route('audits.complete',$audit) }}">@csrf<button class="btn btn-success">Complete audit</button></form>@endif</div>
-<p class="text-muted">Auditor: {{ $audit->auditor->name }} · {{ $audit->scope }}</p>
-@if($audit->checks->isNotEmpty())
-<h5>Checklist ({{ $audit->checks->where('result','!=','pending')->count() }}/{{ $audit->checks->count() }} answered)</h5>
-<table class="table table-sm bg-white mb-4"><tbody>
-@foreach($audit->checks as $c)<tr><td style="width:40%">{{ $c->question }}</td>
-<td>@if($audit->status==='completed')<strong>{{ $c->result }}</strong> <small>{{ $c->notes }}</small>
-@else<form method="POST" action="{{ route('checks.update',$c) }}" class="row g-1">@csrf @method('PATCH')
-  <div class="col-auto"><select name="result" class="form-select form-select-sm">@foreach(\App\Models\AuditCheck::RESULTS as $r)<option value="{{ $r }}" @selected($c->result===$r)>{{ $r }}</option>@endforeach</select></div>
-  <div class="col-auto"><select name="severity" class="form-select form-select-sm" title="Severity (used when result is fail)">@foreach(\App\Models\AuditFinding::SEVERITIES as $sv)<option>{{ $sv }}</option>@endforeach</select></div>
-  <div class="col"><input name="notes" value="{{ $c->notes }}" class="form-control form-control-sm" placeholder="Notes / evidence reference"></div>
-  <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Save</button></div>
-</form>@endif
-@if($c->finding_id)<span class="badge bg-danger">finding raised</span>@endif</td></tr>@endforeach
-</tbody></table>
+@php
+  $done = $audit->status === 'completed';
+  $total = $audit->checks->count();
+  $answered = $audit->checks->where('result', '!=', 'pending')->count();
+  $pct = $total ? round($answered / $total * 100) : 0;
+@endphp
+<a class="back" href="{{ route('audits.index') }}"><x-icon name="back" :size="16" />Security audits</a>
+
+<x-page-header :title="$audit->title" :sub="$audit->scope">
+  <x-slot:actions>
+    <x-status :value="$audit->status" />
+    @unless($done)
+    <form method="POST" action="{{ route('audits.complete', $audit) }}">@csrf
+      <button class="btn btn-primary" onclick="return confirm('Complete this audit? Checks can no longer be changed afterwards.')">Complete audit</button>
+    </form>
+    @endunless
+  </x-slot:actions>
+</x-page-header>
+
+<div class="surface surface-pad">
+  <dl class="meta">
+    <div><dt>Auditor</dt><dd>{{ $audit->auditor->name }}</dd></div>
+    <div><dt>Findings</dt><dd>{{ $audit->findings->count() }}</dd></div>
+    @if($total)<div><dt>Checklist</dt><dd>{{ $answered }} of {{ $total }} answered</dd></div>@endif
+  </dl>
+</div>
+
+@if($total)
+<div class="section">
+  <h2 class="section-title">Checklist</h2>
+  <div class="meter mb-3" role="progressbar" aria-valuenow="{{ $pct }}" aria-valuemin="0" aria-valuemax="100" aria-label="Checklist progress"><span style="width: {{ $pct }}%"></span></div>
+  <div class="surface">
+    @foreach($audit->checks as $c)
+    <div class="check">
+      <div class="check-q">
+        <span>{{ $c->question }}</span>
+      </div>
+      @if($done)
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <x-status :value="$c->result" />
+          @if($c->notes)<span class="muted small-text">{{ $c->notes }}</span>@endif
+          @if($c->finding_id)<span class="small-text" style="color: var(--clay-text)">Finding raised</span>@endif
+        </div>
+      @else
+        <form method="POST" action="{{ route('checks.update', $c) }}" class="check-form" data-check>@csrf @method('PATCH')
+          <div class="seg" role="radiogroup" aria-label="Result">
+            <label class="seg-pass"><input type="radio" name="result" value="pass" required @checked($c->result === 'pass')><span>Pass</span></label>
+            <label class="seg-fail"><input type="radio" name="result" value="fail" @checked($c->result === 'fail')><span>Fail</span></label>
+            <label class="seg-na"><input type="radio" name="result" value="not_applicable" @checked($c->result === 'not_applicable')><span>N/A</span></label>
+          </div>
+          <select name="severity" class="form-select form-select-sm" data-severity aria-label="Severity if this fails" @if($c->result !== 'fail') hidden @endif>
+            @foreach(\App\Models\AuditFinding::SEVERITIES as $sv)<option value="{{ $sv }}" @selected($sv === 'medium')>{{ ucfirst($sv) }} severity</option>@endforeach
+          </select>
+          <input name="notes" value="{{ $c->notes }}" class="form-control form-control-sm notes" placeholder="Notes or evidence reference" aria-label="Notes">
+          <button class="btn btn-sm btn-outline-secondary">Save</button>
+          @if($c->finding_id)<span class="small-text" style="color: var(--clay-text)">Finding raised</span>@endif
+        </form>
+      @endif
+    </div>
+    @endforeach
+  </div>
+</div>
 @endif
-<h5>Findings</h5>
-<table class="table table-sm bg-white"><thead><tr><th>Title</th><th>Severity</th><th>Status</th><th>Assigned</th><th>Due</th><th></th></tr></thead><tbody>
-@forelse($audit->findings as $f)<tr><td>{{ $f->title }}<br><small class="text-muted">{{ $f->description }}</small></td><td>{{ $f->severity }}</td><td>{{ $f->status }}</td><td>{{ $f->assignee?->name }}</td><td>{{ $f->due_date?->toDateString() }}</td>
-<td>@foreach(\App\Models\AuditFinding::TRANSITIONS[$f->status] as $to)<form method="POST" action="{{ route('findings.update',$f) }}" class="d-inline">@csrf @method('PATCH')<input type="hidden" name="status" value="{{ $to }}"><button class="btn btn-sm btn-outline-primary">{{ $to }}</button></form> @endforeach</td></tr>
-@empty<tr><td colspan="6" class="text-muted">No findings yet.</td></tr>@endforelse</tbody></table>
-@if($audit->status!=='completed')
-<div class="card card-body"><h6>Record finding</h6>
-<form method="POST" action="{{ route('findings.store',$audit) }}">@csrf
-  <input name="title" class="form-control mb-2" placeholder="Title" value="{{ old('title') }}">
-  <textarea name="description" class="form-control mb-2" placeholder="Description / evidence reference"></textarea>
-  <div class="row g-2 mb-2"><div class="col-md-3"><select name="severity" class="form-select">@foreach(\App\Models\AuditFinding::SEVERITIES as $s)<option>{{ $s }}</option>@endforeach</select></div>
-  <div class="col-md-5"><select name="assigned_to" class="form-select"><option value="">Unassigned</option>@foreach($users as $u)<option value="{{ $u->id }}">{{ $u->name }}</option>@endforeach</select></div>
-  <div class="col-md-4"><input type="date" name="due_date" class="form-control"></div></div>
-  <button class="btn btn-primary">Add finding</button></form></div>
-@endif
+
+<div class="section">
+  <h2 class="section-title">Findings</h2>
+  @if($audit->findings->isEmpty())
+    <div class="surface"><x-empty title="No findings yet" :hint="$done ? 'This audit was completed without findings.' : 'Failed checks raise findings automatically. You can also record one by hand below.'" /></div>
+  @else
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Finding</th><th>Severity</th><th>Status</th><th>Owner</th><th>Due</th><th></th></tr></thead>
+      <tbody>
+      @foreach($audit->findings as $f)
+        @php $late = $f->due_date && $f->due_date->copy()->endOfDay()->isPast() && in_array($f->status, ['open', 'in_progress']); @endphp
+        <tr>
+          <td><span class="cell-title">{{ $f->title }}</span>@if($f->description)<span class="cell-sub">{{ $f->description }}</span>@endif</td>
+          <td><x-status :value="$f->severity" /></td>
+          <td><x-status :value="$f->status" /></td>
+          <td class="nowrap">{{ $f->assignee?->name ?? 'Unassigned' }}</td>
+          <td class="nowrap {{ $late ? 'is-overdue' : '' }}">{{ $f->due_date?->format('j M Y') ?? '-' }}</td>
+          <td class="cell-actions"><x-finding-actions :finding="$f" /></td>
+        </tr>
+      @endforeach
+      </tbody>
+    </table>
+  </div>
+  @endif
+</div>
+
+@unless($done)
+<div class="section">
+  <h2 class="section-title">Record a finding</h2>
+  <form method="POST" action="{{ route('findings.store', $audit) }}" class="surface form-card">@csrf
+    <div class="form-grid">
+      <div class="span-2">
+        <label class="form-label" for="f_title">Title</label>
+        <input id="f_title" name="title" class="form-control @error('title') is-invalid @enderror" value="{{ old('title') }}" placeholder="e.g. Admin port exposed to the internet">
+        @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
+      </div>
+      <div class="span-2">
+        <label class="form-label" for="f_desc">Description or evidence</label>
+        <textarea id="f_desc" name="description" class="form-control" rows="3">{{ old('description') }}</textarea>
+      </div>
+      <div>
+        <label class="form-label" for="f_sev">Severity</label>
+        <select id="f_sev" name="severity" class="form-select">@foreach(\App\Models\AuditFinding::SEVERITIES as $s)<option value="{{ $s }}" @selected(old('severity', 'medium') === $s)>{{ ucfirst($s) }}</option>@endforeach</select>
+      </div>
+      <div>
+        <label class="form-label" for="f_due">Due date</label>
+        <input id="f_due" type="date" name="due_date" class="form-control" value="{{ old('due_date') }}">
+      </div>
+      <div class="span-2">
+        <label class="form-label" for="f_owner">Who fixes it?</label>
+        <select id="f_owner" name="assigned_to" class="form-select"><option value="">Unassigned</option>@foreach($users as $u)<option value="{{ $u->id }}" @selected(old('assigned_to') == $u->id)>{{ $u->name }}</option>@endforeach</select>
+      </div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary">Add finding</button></div>
+  </form>
+</div>
+@endunless
+
+@push('scripts')
+<script>
+  // Show the severity picker only when a check is marked "Fail".
+  document.querySelectorAll('[data-check]').forEach(function (form) {
+    var sev = form.querySelector('[data-severity]');
+    form.addEventListener('change', function (e) {
+      if (e.target.name === 'result') sev.hidden = e.target.value !== 'fail';
+    });
+  });
+</script>
+@endpush
 @endsection

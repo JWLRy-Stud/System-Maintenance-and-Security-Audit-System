@@ -1,32 +1,114 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-bs-theme="dark">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@yield('title', 'Maintenance & Security Audit')</title>
+  <title>@hasSection('title')@yield('title') | @endif Maintenance &amp; Security Audit</title>
+  <script>
+    // Dark is the default; apply the saved choice before first paint to avoid a flash.
+    (function () {
+      var t = 'dark';
+      try { t = localStorage.getItem('theme') || 'dark'; } catch (e) {}
+      document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.setAttribute('data-bs-theme', t);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ asset('css/ui.css') }}?v={{ @filemtime(public_path('css/ui.css')) }}" rel="stylesheet">
 </head>
-<body class="bg-light">
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-  <div class="container">
-    <a class="navbar-brand" href="{{ route('dashboard') }}">Maintenance &amp; Audit</a>
-    @auth
-    <div class="navbar-nav me-auto">
-      <a class="nav-link" href="{{ route('assets.index') }}">Assets</a>
-      @if(auth()->user()->hasRole('technician','staff'))<a class="nav-link" href="{{ route('maintenance.index') }}">Maintenance</a>@endif
-      @if(auth()->user()->hasRole('auditor'))<a class="nav-link" href="{{ route('audits.index') }}">Security Audits</a><a class="nav-link" href="{{ route('checklists.index') }}">Checklists</a>@endif
-      @if(auth()->user()->hasRole())<a class="nav-link" href="{{ route('users.index') }}">Users</a><a class="nav-link" href="{{ route('reports.logs') }}">Activity Log</a>@endif
+<body>
+@auth
+@php
+  $u = auth()->user();
+  $nav = fn (string $pattern) => request()->routeIs($pattern) ? 'is-active' : '';
+@endphp
+<div class="app">
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <a class="brand" href="{{ route('dashboard') }}">
+      <span class="brand-mark"><x-icon name="shield" :size="18" /></span>
+      <span>Maintenance &amp; Audit</span>
+    </a>
+
+    <nav class="nav-groups">
+      <a class="nav-item {{ $nav('dashboard') }}" href="{{ route('dashboard') }}"><x-icon name="home" />Dashboard</a>
+      <a class="nav-item {{ $nav('assets.*') }}" href="{{ route('assets.index') }}"><x-icon name="box" />Assets</a>
+
+      <div class="nav-label">Work</div>
+      @if($u->hasRole('technician', 'staff'))
+        <a class="nav-item {{ $nav('maintenance.*') }}" href="{{ route('maintenance.index') }}"><x-icon name="wrench" />Maintenance</a>
+      @endif
+      <a class="nav-item {{ $nav('findings.mine') }}" href="{{ route('findings.mine') }}"><x-icon name="task" />My tasks</a>
+
+      @if($u->hasRole('auditor'))
+        <div class="nav-label">Security</div>
+        <a class="nav-item {{ $nav('audits.*') }}" href="{{ route('audits.index') }}"><x-icon name="shield" />Security audits</a>
+        <a class="nav-item {{ $nav('checklists.*') }}" href="{{ route('checklists.index') }}"><x-icon name="list" />Checklists</a>
+      @endif
+
+      @if($u->hasRole())
+        <div class="nav-label">Administration</div>
+        <a class="nav-item {{ $nav('users.*') }}" href="{{ route('users.index') }}"><x-icon name="users" />Users</a>
+        <a class="nav-item {{ $nav('reports.logs') }}" href="{{ route('reports.logs') }}"><x-icon name="activity" />Activity log</a>
+      @endif
+    </nav>
+
+    <div class="side-foot">
+      <div class="who">
+        <span class="avatar">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($u->name, 0, 1)) }}</span>
+        <div>
+          <div class="who-name">{{ $u->name }}</div>
+          <div class="who-role"><x-role :value="$u->role" /></div>
+        </div>
+      </div>
+      <x-theme-toggle />
+      <a class="nav-item {{ $nav('account.*') }}" href="{{ route('account.password') }}"><x-icon name="key" />Change password</a>
+      <form method="POST" action="{{ route('logout') }}">@csrf
+        <button class="nav-item" type="submit"><x-icon name="logout" />Sign out</button>
+      </form>
     </div>
-    <a class="nav-link text-white-50" href="{{ route('findings.mine') }}">My tasks</a>
-    <a class="nav-link text-white-50 me-2" href="{{ route('account.password') }}">Password</a>
-    <span class="navbar-text me-3">{{ auth()->user()->name }} ({{ auth()->user()->role }})</span>
-    <form method="POST" action="{{ route('logout') }}">@csrf<button class="btn btn-sm btn-outline-light">Logout</button></form>
-    @endauth
+  </aside>
+  <div class="scrim" data-nav-toggle></div>
+
+  <div>
+    <div class="topbar">
+      <button class="icon-btn" type="button" data-nav-toggle aria-label="Open menu" aria-controls="sidebar"><x-icon name="menu" /></button>
+      <a class="brand" href="{{ route('dashboard') }}">Maintenance &amp; Audit</a>
+    </div>
+    <main class="main">
+      <div class="content @yield('width')">
+        @include('layouts.notices')
+        @yield('content')
+      </div>
+    </main>
   </div>
-</nav>
-<main class="container pb-5">
-  @if(session('ok'))<div class="alert alert-success">{{ session('ok') }}</div>@endif
-  @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>@endif
-  @yield('content')
+</div>
+@else
+<main class="auth-shell">
+  <x-theme-toggle class="icon-btn theme-fab" />
+  <div class="auth-card">
+    @include('layouts.notices')
+    @yield('content')
+  </div>
 </main>
+@endauth
+
+<script>
+  document.querySelectorAll('[data-nav-toggle]').forEach(function (el) {
+    el.addEventListener('click', function () { document.body.classList.toggle('nav-open'); });
+  });
+  document.querySelectorAll('[data-theme-toggle]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.setAttribute('data-bs-theme', next);
+      try { localStorage.setItem('theme', next); } catch (e) {}
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') document.body.classList.remove('nav-open');
+  });
+</script>
+@stack('scripts')
 </body>
 </html>
