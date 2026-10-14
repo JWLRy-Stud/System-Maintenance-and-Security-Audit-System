@@ -86,4 +86,22 @@ class AuthorizationTest extends TestCase
         }
         $this->post('/login', ['email' => $u->email, 'password' => 'password'])->assertRedirect('/');
     }
+
+    public function test_forged_forwarded_for_header_cannot_dodge_the_login_lockout(): void
+    {
+        // With TRUSTED_PROXIES empty (phpunit.xml) X-Forwarded-For must be ignored, so the lockout key stays the same.
+        $u = \App\Models\User::factory()->create(['role' => 'staff']);
+
+        for ($i = 1; $i <= 5; $i++) {
+            $this->withHeaders(['X-Forwarded-For' => "203.0.113.$i"])
+                ->post('/login', ['email' => $u->email, 'password' => 'wrong'])
+                ->assertSessionHasErrors('email');
+        }
+
+        $this->withHeaders(['X-Forwarded-For' => '203.0.113.99'])
+            ->post('/login', ['email' => $u->email, 'password' => 'password'])
+            ->assertSessionHasErrors('email');
+        $this->assertStringContainsString('Too many failed attempts', session('errors')->first('email'));
+        $this->assertGuest();
+    }
 }

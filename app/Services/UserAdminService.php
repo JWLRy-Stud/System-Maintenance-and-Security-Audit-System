@@ -24,12 +24,14 @@ class UserAdminService
                 $this->guardLastAdmin($target, 'role', 'The last active administrator cannot be demoted.');
             }
 
-            $payload = ['name' => $data['name'], 'email' => $data['email'], 'role' => $newRole];
+            $payload = ['name' => $data['name'], 'email' => $data['email']];
             $passwordReset = ! empty($data['password']);
             if ($passwordReset) {
                 $payload['password'] = $data['password']; // hashed by the model cast
             }
-            $target->update($payload);
+            $target->fill($payload);
+            $target->forceFill(['role' => $newRole]); // role is not mass-assignable (see User::$fillable)
+            $target->save();
 
             ActivityLogService::record('user.updated', $target);
             if ($roleChanged) {
@@ -59,7 +61,7 @@ class UserAdminService
                 $this->guardLastAdmin($target, 'status', 'The last active administrator cannot be deactivated.');
             }
 
-            $target->update(['status' => $deactivating ? 'inactive' : 'active']);
+            $target->forceFill(['status' => $deactivating ? 'inactive' : 'active'])->save(); // status is not mass-assignable
             ActivityLogService::record('user.status_changed', $target);
 
             if ($deactivating) {

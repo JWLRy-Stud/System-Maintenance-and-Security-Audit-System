@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Validation\Rules\Password;
 
 class User extends Authenticatable
 {
@@ -12,10 +13,16 @@ class User extends Authenticatable
 
     public const ROLES = ['admin', 'technician', 'auditor', 'staff'];
 
-    // BUG B-13 [OPEN]: 'role' and 'status' are mass-assignable. A future $user->update($request->all()) would be
-    //   privilege escalation. FIX: remove them from $fillable and set them with forceFill() in UserAdminService,
-    //   UserController::store and DatabaseSeeder; add a test that mass-assigning 'role' is ignored.
-    protected $fillable = ['name', 'email', 'password', 'role', 'status'];
+    // 'role' and 'status' are deliberately NOT fillable: a stray $user->update($request->all()) must never be able to
+    // grant admin or reactivate an account. Set them explicitly with forceFill() (UserAdminService, UserController::store,
+    // DatabaseSeeder). Factories ignore this guard, so User::factory()->create(['role' => ...]) still works in tests.
+    protected $fillable = ['name', 'email', 'password'];
+
+    /** The ONE password policy (admin-created accounts, admin resets, own password change). Change it here only. */
+    public static function passwordRule(): Password
+    {
+        return Password::min(10)->mixedCase()->numbers();
+    }
 
     protected $hidden = ['password', 'remember_token'];
 

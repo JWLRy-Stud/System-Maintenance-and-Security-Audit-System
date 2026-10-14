@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\UserAdminService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class AccountAuthorityTest extends TestCase
@@ -22,7 +23,7 @@ class AccountAuthorityTest extends TestCase
         $u = $this->make('staff');
         $this->actingAs($u)->get('/')->assertOk();
 
-        $u->update(['status' => 'inactive']);
+        $u->forceFill(['status' => 'inactive'])->save();
 
         $this->get('/')->assertRedirect('/login');
         $this->assertGuest();
@@ -31,7 +32,7 @@ class AccountAuthorityTest extends TestCase
     public function test_inactive_user_cannot_update_a_finding_or_change_password(): void
     {
         $u = $this->make('staff', 'inactive');
-        $this->actingAs($u)->put('/account/password', ['current_password' => 'password', 'password' => 'newpassword1', 'password_confirmation' => 'newpassword1'])->assertRedirect('/login');
+        $this->actingAs($u)->put('/account/password', ['current_password' => 'password', 'password' => 'NewPassword12', 'password_confirmation' => 'NewPassword12'])->assertRedirect('/login');
     }
 
     public function test_admin_can_open_the_edit_page_and_self_edit_locks_the_role(): void
@@ -65,8 +66,8 @@ class AccountAuthorityTest extends TestCase
         $this->actingAs($admin)->put("/users/{$u->id}", ['name' => $u->name, 'email' => $u->email, 'role' => 'staff', 'password' => ''])->assertSessionHasNoErrors();
         $this->assertEquals($old, $u->fresh()->password);
 
-        $this->actingAs($admin)->put("/users/{$u->id}", ['name' => $u->name, 'email' => $u->email, 'role' => 'staff', 'password' => 'brandnewpass'])->assertSessionHasNoErrors();
-        $this->assertTrue(password_verify('brandnewpass', $u->fresh()->password));
+        $this->actingAs($admin)->put("/users/{$u->id}", ['name' => $u->name, 'email' => $u->email, 'role' => 'staff', 'password' => 'BrandNewPass1'])->assertSessionHasNoErrors();
+        $this->assertTrue(password_verify('BrandNewPass1', $u->fresh()->password));
         $this->assertDatabaseHas('activity_logs', ['action' => 'user.password_reset']);
     }
 
@@ -95,14 +96,14 @@ class AccountAuthorityTest extends TestCase
         $service = app(UserAdminService::class);
         $only = $this->make('admin');
         $actor = $this->make('admin');
-        $actor->update(['status' => 'inactive']); // actor is no longer an active admin; $only is the last one
+        $actor->forceFill(['status' => 'inactive'])->save(); // actor is no longer an active admin; $only is the last one
 
         $this->assertThrows(fn () => $service->toggle($only, $actor), \Illuminate\Validation\ValidationException::class);
         $this->assertThrows(fn () => $service->update($only, $actor, ['name' => 'a', 'email' => $only->email, 'role' => 'staff']), \Illuminate\Validation\ValidationException::class);
         $this->assertEquals('active', $only->fresh()->status);
         $this->assertEquals('admin', $only->fresh()->role);
 
-        $actor->update(['status' => 'active']); // now two admins: allowed
+        $actor->forceFill(['status' => 'active'])->save(); // now two admins: allowed
         $service->toggle($only, $actor);
         $this->assertEquals('inactive', $only->fresh()->status);
     }
@@ -131,5 +132,85 @@ class AccountAuthorityTest extends TestCase
     {
         $this->actingAs($this->make('auditor'))->get('/')->assertOk()->assertDontSee('Pending maintenance')->assertSee('Open findings');
         $this->actingAs($this->make('staff'))->get('/')->assertOk()->assertSee('Pending maintenance')->assertSee('My open findings');
+    }
+
+    public function test_changing_password_signs_out_other_sessions_but_keeps_this_one(): void
+    {
+        $u = $this->make('staff');
+
+        // Session A (the one that will change the password) and session B (another device) both start signed in.
+        $this->actingAs($u)->get('/')->assertOk();
+        $otherDeviceHash = session('password_hash_web');
+        $this->assertNotNull($otherDeviceHash, 'auth.session should have stored the password hash in the session');
+
+        $this->put('/account/password', ['current_password' => 'password', 'password' => 'NewPassword12', 'password_confirmation' => 'NewPassword12'])
+            ->assertSessionHasNoErrors();
+
+        // This session survives the change...
+        $this->get('/')->assertOk();
+
+        // ...but a session still carrying the OLD password hash is signed out on its next request.
+        $this->flushSession();
+        $this->withSession(['password_hash_web' => $otherDeviceHash])
+            ->actingAs($u->fresh())
+            ->get('/')
+            ->assertRedirect('/login');
+    }
+
+    public function test_role_and_status_are_ignored_when_mass_assigned(): void
+    {
+        $u = $this->make('staff');
+        $u->update(['name' => 'Renamed', 'role' => 'admin', 'status' => 'inactive']);
+        $fresh = $u->fresh();
+        $this->assertEquals('Renamed', $fresh->name);
+        $this->assertEquals('staff', $fresh->role);
+        $this->assertEquals('active', $fresh->status);
+
+        // falls back to the column defaults (staff / active), never to what was passed in
+        $new = User::create(['name' => 'N', 'email' => 'n@example.com', 'password' => 'Long-Enough-1', 'role' => 'admin', 'status' => 'inactive']);
+        $this->assertEquals('staff', $new->fresh()->role);
+        $this->assertEquals('active', $new->fresh()->status);
+    }
+
+    public function test_admin_creating_a_user_sets_the_chosen_role_and_forces_active_status(): void
+    {
+        $this->actingAs($this->make('admin'))
+            ->post('/users', ['name' => 'Tess', 'email' => 'tess@example.com', 'password' => 'Long-Enough-1', 'role' => 'technician', 'status' => 'inactive'])
+            ->assertSessionHasNoErrors();
+
+        $created = User::where('email', 'tess@example.com')->firstOrFail();
+        $this->assertEquals('technician', $created->role);
+        $this->assertEquals('active', $created->status);
+    }
+
+    public static function weakPasswords(): array
+    {
+        return [
+            'too short' => ['Short1aA'],
+            'no upper case' => ['alllowercase123'],
+            'no lower case' => ['ALLUPPERCASE123'],
+            'no number' => ['NoNumbersHereAtAll'],
+        ];
+    }
+
+    #[DataProvider('weakPasswords')]
+    public function test_weak_passwords_are_rejected_everywhere_a_password_is_set(string $weak): void
+    {
+        $admin = $this->make('admin');
+        $u = $this->make('staff');
+
+        $this->actingAs($admin)->post('/users', ['name' => 'W', 'email' => 'w@example.com', 'password' => $weak, 'role' => 'staff'])->assertSessionHasErrors('password');
+        $this->actingAs($admin)->put("/users/{$u->id}", ['name' => $u->name, 'email' => $u->email, 'role' => 'staff', 'password' => $weak])->assertSessionHasErrors('password');
+        $this->actingAs($u)->put('/account/password', ['current_password' => 'password', 'password' => $weak, 'password_confirmation' => $weak])->assertSessionHasErrors('password');
+
+        $this->assertDatabaseMissing('users', ['email' => 'w@example.com']);
+    }
+
+    public function test_a_password_that_meets_the_policy_is_accepted(): void
+    {
+        $this->actingAs($this->make('admin'))
+            ->post('/users', ['name' => 'Ok', 'email' => 'ok@example.com', 'password' => 'Str0ngEnoughPass', 'role' => 'staff'])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('users', ['email' => 'ok@example.com']);
     }
 }

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\ActivityLogService;
 use App\Services\UserAdminService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
@@ -17,17 +18,19 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        // BUG B-15 [OPEN]: weak password rule (min:8 only), see AccountController. Admin-created accounts also never
-        //   have to change the initial password. FIX: shared strong rule + optional must_change_password flag.
+        // BUG B-29 [OPEN]: admin-created accounts never have to change the initial password the admin chose.
+        //   FIX: add a users.must_change_password flag (migration), set it here and on admin resets, and redirect to
+        //   the password page (middleware) until it is cleared; test it.
         // BUG B-22 [OPEN, unverified]: email is not lowercased before the unique check. MySQL's default collation is
         //   case-insensitive so duplicates are probably still caught; confirm, or normalise with prepareForValidation.
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8',
+            'password' => ['required', 'string', User::passwordRule()],
             'role' => ['required', Rule::in(User::ROLES)],
         ]);
-        $user = User::create($data + ['status' => 'active']);
+        $user = new User(Arr::only($data, ['name', 'email', 'password']));
+        $user->forceFill(['role' => $data['role'], 'status' => 'active'])->save(); // role/status are not mass-assignable
         ActivityLogService::record('user.created', $user);
 
         return redirect()->route('users.index')->with('ok', 'User created.');
@@ -48,7 +51,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'role' => ['required', Rule::in(User::ROLES)],
-            'password' => 'nullable|string|min:8', // leave blank to keep the current password
+            'password' => ['nullable', 'string', User::passwordRule()], // leave blank to keep the current password
         ]);
 
         $service->update($user, $request->user(), $data);

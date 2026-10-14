@@ -21,7 +21,7 @@
       <label class="form-label" for="password">Password</label>
       <input id="password" type="password" name="password" class="form-control @error('password') is-invalid @enderror" autocomplete="new-password">
       @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
-      <div class="form-hint">At least 8 characters.</div>
+      <div class="form-hint">At least 10 characters, with upper and lower case letters and a number.</div>
     </div>
     <div>
       <label class="form-label" for="role">Role</label>

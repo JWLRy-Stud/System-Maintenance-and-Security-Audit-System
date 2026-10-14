@@ -22,7 +22,7 @@
 @else
   <div class="table-wrap">
     <table class="data">
-      <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Outcome</th><th>Request ID</th></tr></thead>
+      <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Outcome</th><th>Detail</th><th>IP</th><th>Request ID</th></tr></thead>
       <tbody>
       @foreach($logs as $l)
         <tr>
@@ -37,6 +37,8 @@
           </td>
           <td>@if($l->subject_type){{ class_basename($l->subject_type) }} #{{ $l->subject_id }}@else <span class="muted">-</span>@endif</td>
           <td><x-status :value="$l->outcome" /></td>
+          <td class="small-text">{{ $l->detail ?? '-' }}</td>
+          <td class="muted small-text num">{{ $l->ip_address ?? '-' }}</td>
           <td class="muted small-text num">{{ $l->request_id ? \Illuminate\Support\Str::limit($l->request_id, 8, '') : '-' }}</td>
         </tr>
       @endforeach

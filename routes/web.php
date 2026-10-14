@@ -8,7 +8,8 @@ Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middl
 Route::post('/login', [AuthController::class, 'login'])->middleware('guest');
 
 // 'active' signs out accounts that were deactivated while logged in; role gates and policies sit on top of it.
-Route::middleware(['auth', 'active'])->group(function () {
+// 'auth.session' signs out any session whose stored password hash no longer matches (after a password change).
+Route::middleware(['auth', 'auth.session', 'active'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/account/password', [AccountController::class, 'edit'])->name('account.password');

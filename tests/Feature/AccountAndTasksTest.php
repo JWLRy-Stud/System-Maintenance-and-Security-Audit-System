@@ -17,10 +17,10 @@ class AccountAndTasksTest extends TestCase
     {
         $u = User::factory()->create();
 
-        $this->actingAs($u)->put('/account/password', ['current_password' => 'wrong', 'password' => 'newpassword1', 'password_confirmation' => 'newpassword1'])->assertSessionHasErrors('current_password');
-        $this->actingAs($u)->put('/account/password', ['current_password' => 'password', 'password' => 'newpassword1', 'password_confirmation' => 'newpassword1'])->assertSessionHasNoErrors();
+        $this->actingAs($u)->put('/account/password', ['current_password' => 'wrong', 'password' => 'NewPassword12', 'password_confirmation' => 'NewPassword12'])->assertSessionHasErrors('current_password');
+        $this->actingAs($u)->put('/account/password', ['current_password' => 'password', 'password' => 'NewPassword12', 'password_confirmation' => 'NewPassword12'])->assertSessionHasNoErrors();
 
-        $this->assertTrue(Hash::check('newpassword1', $u->fresh()->password));
+        $this->assertTrue(Hash::check('NewPassword12', $u->fresh()->password));
         $this->assertDatabaseHas('activity_logs', ['action' => 'auth.password_changed']);
     }
 

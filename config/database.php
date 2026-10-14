@@ -57,6 +57,8 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // BUG B-31 [OPEN]: PDO::MYSQL_ATTR_SSL_CA is deprecated on PHP 8.4+ (67 deprecation notices drown the test output).
+            //   FIX: use \Pdo\Mysql::ATTR_SSL_CA when it exists (PHP >= 8.4), else PDO::MYSQL_ATTR_SSL_CA; same in the second connection below.
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

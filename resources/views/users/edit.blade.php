@@ -30,7 +30,7 @@
       <label class="form-label" for="password">Reset password <span class="muted fw-normal">(optional)</span></label>
       <input id="password" type="password" name="password" class="form-control @error('password') is-invalid @enderror" autocomplete="new-password">
       @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
-      <div class="form-hint">Leave blank to keep the current password. Changing the role or password signs the person out everywhere.</div>
+      <div class="form-hint">Leave blank to keep the current password. A new one needs at least 10 characters with upper and lower case letters and a number. Changing the role or password signs the person out everywhere.</div>
     </div>
   </div>
   <div class="form-actions">

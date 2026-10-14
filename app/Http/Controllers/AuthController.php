@@ -24,7 +24,7 @@ class AuthController extends Controller
         // five people on one office IP, or one person trying the four demo roles, were locked out for a minute.
         $key = Str::lower($cred['email']).'|'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, self::MAX_FAILED_ATTEMPTS)) {
-            ActivityLogService::record('auth.login', null, 'denied', null);
+            ActivityLogService::record('auth.login', null, 'denied', null, 'attempted email: '.$cred['email']);
             throw ValidationException::withMessages(['email' => 'Too many failed attempts. Try again in '.RateLimiter::availableIn($key).' seconds.']);
         }
 
@@ -36,10 +36,8 @@ class AuthController extends Controller
             return redirect()->intended('/');
         }
 
-        // BUG B-16 [OPEN]: failed logins are logged without the attempted email or the IP address, which makes
-        //   brute-force attempts hard to investigate. FIX: store both (never the password) in a new activity_logs column or meta field.
         RateLimiter::hit($key, 60);
-        ActivityLogService::record('auth.login', null, 'failed', null);
+        ActivityLogService::record('auth.login', null, 'failed', null, 'attempted email: '.$cred['email']); // never the password
 
         return back()->withErrors(['email' => 'Invalid credentials or inactive account.'])->onlyInput('email');
     }

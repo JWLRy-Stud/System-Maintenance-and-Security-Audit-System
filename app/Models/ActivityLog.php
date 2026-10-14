@@ -9,7 +9,10 @@ class ActivityLog extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['actor_id', 'action', 'subject_type', 'subject_id', 'outcome', 'request_id'];
+    // BUG B-30 [OPEN]: append-only is enforced by model events only; a mass query delete()/truncate or direct SQL bypasses it.
+    //   FIX: in production run the app with a MySQL user that has only SELECT+INSERT on activity_logs (migrate with a separate
+    //   user), and add a DB trigger or documented grant check; see docs/DEPLOYMENT.md.
+    protected $fillable = ['actor_id', 'action', 'subject_type', 'subject_id', 'outcome', 'request_id', 'ip_address', 'detail'];
 
     protected static function booted(): void
     {
