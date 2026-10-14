@@ -15,11 +15,16 @@
   - Checklist templates can be edited/deleted (creator or admin); fail -> pass closes the linked finding, back to fail reopens it (`AuditCheckService`)
   - Login lockout now counts only failed attempts per email+IP (was: every login per IP)
   - Bug fixes listed in docs/KNOWN_BUGS.md (marked FIXED)
+- Stage 3 (hardening, B-10 to B-16, B-26 to B-29 in docs/KNOWN_BUGS.md, all FIXED with tests):
+  - Trusted proxies come from `TRUSTED_PROXIES` (empty = none); changing your password signs out your other sessions; `role`/`status` are not mass-assignable
+  - One password policy (`User::passwordRule()`: 10+ chars, upper + lower case, number); wrong current password is rate limited; admin-created or admin-reset passwords must be replaced on first use (`must_change_password`)
+  - Activity log also records IP address and detail (attempted login email, denied route); every 403 is logged as `access.denied`
+  - Demo seeder refuses to run in production; first admin is created with `php artisan app:create-admin` (hidden password prompt)
 - Docs: SETUP (Ubuntu), WINDOWS_SETUP, DEPLOYMENT, AI_CONTEXT, HANDOFF_CHECKLIST
 
 ## Verified by us (update after running!)
 - [x] App runs locally on Ubuntu; login and dashboard work
-- [x] `php artisan test` passes: 55 tests, 279 assertions (run by Claude in a sandbox on PHP 8.3 + SQLite, Oct 2026). Re-run on your machine (MySQL) and record the result: ____
+- [ ] `php artisan test`: 87 tests. Last run on the owner's machine (Oct 2026, tests use SQLite): everything passed except one test that was then corrected. Re-run and record the final result: ____
 - [ ] Stage 2 pages render without errors for every role (verified over HTTP) but have never been looked at in a browser (assign panel on audit page, user edit page, checklist edit page; see B-23)
 - [x] Manual walkthrough of every role, 79/79 steps, run by Claude over real HTTP in a sandbox (found and fixed B-11). Still to do by a human on a real machine: HANDOFF_CHECKLIST section 5, ticking the boxes
 - [ ] First deployment done (host: ____ )
@@ -27,10 +32,10 @@
 ## Known gaps / ideas (pick ONE per chat). Bugs live in docs/KNOWN_BUGS.md
 1. Checks have no evidence upload (needs storage, file validation, access control).
 2. No email notifications, or pagination on the audit detail page.
-3. Activity log immutability is enforced at the model level only (production: also restrict DB grants).
+3. Activity log immutability is enforced at the model level only (production: also restrict DB grants, see B-30).
 4. No password reset by email (admin can reset passwords by hand).
 5. Reports are limited to the findings CSV and the filtered activity log.
-6. Denied attempts on policy-protected actions are logged only for maintenance and finding transitions.
+6. A maintenance request cannot be reassigned yet (B-18).
 
 ## Decisions
 - One role per user (`users.role`), not a roles table.

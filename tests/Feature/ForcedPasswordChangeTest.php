@@ -36,6 +36,7 @@ class ForcedPasswordChangeTest extends TestCase
 
     public function test_the_flagged_user_can_still_log_out(): void
     {
+        /** @var User $u */
         $u = User::factory()->create(['role' => 'staff']);
         $u->forceFill(['must_change_password' => true])->save();
 
@@ -59,6 +60,9 @@ class ForcedPasswordChangeTest extends TestCase
 
     public function test_users_who_were_never_flagged_are_not_redirected(): void
     {
-        $this->actingAs(User::factory()->create(['role' => 'staff']))->get('/')->assertOk();
+        /** @var User $staff */
+        $staff = User::factory()->create(['role' => 'staff']);
+
+        $this->actingAs($staff)->get('/')->assertOk();
     }
 }
