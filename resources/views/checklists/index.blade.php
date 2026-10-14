@@ -14,12 +14,20 @@
 @else
   <div class="table-wrap">
     <table class="data">
-      <thead><tr><th>Template</th><th>Questions</th></tr></thead>
+      <thead><tr><th>Template</th><th>Questions</th><th></th></tr></thead>
       <tbody>
       @foreach($templates as $t)
         <tr>
           <td><span class="cell-title">{{ $t->name }}</span>@if($t->description)<span class="cell-sub">{{ $t->description }}</span>@endif</td>
           <td class="num">{{ $t->items_count }}</td>
+          <td class="cell-actions">
+            @can('update', $t)
+              <a class="btn btn-sm btn-outline-secondary" href="{{ route('checklists.edit', $t) }}">Edit</a>
+              <form method="POST" action="{{ route('checklists.destroy', $t) }}">@csrf @method('DELETE')
+                <button class="btn btn-sm btn-danger-quiet" onclick="return confirm('Delete this template? Audits already started keep their questions.')">Delete</button>
+              </form>
+            @endcan
+          </td>
         </tr>
       @endforeach
       </tbody>

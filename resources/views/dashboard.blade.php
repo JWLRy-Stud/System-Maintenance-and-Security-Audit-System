@@ -6,12 +6,12 @@
   $first = \Illuminate\Support\Str::before($u->name, ' ');
   $maintHref = $u->hasRole('technician', 'staff') ? route('maintenance.index') : null;
   $findHref = $u->hasRole('auditor') ? route('audits.index') : route('findings.mine');
-  $stats = [
-    ['label' => 'Assets tracked',      'value' => $assets,   'note' => 'In the register',                                   'href' => route('assets.index'), 'alert' => false],
-    ['label' => 'Pending maintenance', 'value' => $pending,  'note' => 'Not yet completed',                     'href' => $maintHref,           'alert' => false],
-    ['label' => 'Overdue maintenance', 'value' => $overdue,  'note' => $overdue > 0 ? 'Past scheduled date' : 'Nothing past due', 'href' => $maintHref, 'alert' => $overdue > 0],
-    ['label' => 'Open findings',       'value' => $findings, 'note' => 'Still being fixed',                               'href' => $findHref,            'alert' => false],
-  ];
+  $stats = [['label' => 'Assets tracked', 'value' => $assets, 'note' => 'In the register', 'href' => route('assets.index'), 'alert' => false]];
+  if ($canMaintenance) {
+    $stats[] = ['label' => 'Pending maintenance', 'value' => $pending, 'note' => 'Not yet completed', 'href' => $maintHref, 'alert' => false];
+    $stats[] = ['label' => 'Overdue maintenance', 'value' => $overdue, 'note' => $overdue > 0 ? 'Past scheduled date' : 'Nothing past due', 'href' => $maintHref, 'alert' => $overdue > 0];
+  }
+  $stats[] = ['label' => $u->hasRole('auditor') ? 'Open findings' : 'My open findings', 'value' => $findings, 'note' => 'Still being fixed', 'href' => $findHref, 'alert' => false];
 @endphp
 
 <x-page-header :title="'Welcome back, '.$first" sub="Here is where things stand across your assets, maintenance and audits." />
@@ -59,7 +59,7 @@
       @if($u->hasRole('auditor'))
         <a class="btn btn-outline-secondary" href="{{ route('audits.create') }}"><x-icon name="shield" :size="16" />Start an audit</a>
       @endif
-      @if($u->hasRole())
+      @if($u->isAdmin())
         <a class="btn btn-outline-secondary" href="{{ route('assets.create') }}"><x-icon name="box" :size="16" />Add an asset</a>
         <a class="btn btn-outline-secondary" href="{{ route('users.create') }}"><x-icon name="users" :size="16" />Add a user</a>
       @endif

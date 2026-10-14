@@ -4,7 +4,7 @@
 @php $filtered = request()->filled('q') || request()->filled('status'); @endphp
 
 <x-page-header title="Assets" :sub="$assets->total().' '.\Illuminate\Support\Str::plural('asset', $assets->total()).($filtered ? ' match your filters.' : ' in the register.')">
-  @if(auth()->user()->hasRole())
+  @if(auth()->user()->isAdmin())
   <x-slot:actions><a href="{{ route('assets.create') }}" class="btn btn-primary"><x-icon name="plus" :size="16" />Add asset</a></x-slot:actions>
   @endif
 </x-page-header>
@@ -28,7 +28,7 @@
       <x-empty title="No assets match" hint="Try a different tag or name, or clear the filters to see everything." />
     @else
       <x-empty title="No assets yet" hint="Assets are the equipment you maintain and audit. Add the first one to get started.">
-        @if(auth()->user()->hasRole())<a href="{{ route('assets.create') }}" class="btn btn-primary">Add asset</a>@endif
+        @if(auth()->user()->isAdmin())<a href="{{ route('assets.create') }}" class="btn btn-primary">Add asset</a>@endif
       </x-empty>
     @endif
   </div>

@@ -4,12 +4,11 @@
 @php
   $u = auth()->user();
   $next = \App\Models\MaintenanceRequest::TRANSITIONS[$req->status];
-  $isAdmin = $u->role === 'admin';
-  $isTech = $req->technician_id === $u->id;
-  $canAssign = $req->status === 'open' && $isAdmin;
-  $canStart = $req->status === 'assigned' && ($isAdmin || $isTech);
-  $canComplete = $req->status === 'in_progress' && ($isAdmin || $isTech);
-  $canCancel = in_array('cancelled', $next) && ($isAdmin || ($req->requester_id === $u->id && $req->status === 'open'));
+  // Same rules the server enforces (MaintenanceRequestPolicy::transition); the view only reflects them.
+  $canAssign = $req->status === 'open' && $u->can('transition', [$req, 'assigned']);
+  $canStart = $req->status === 'assigned' && $u->can('transition', [$req, 'in_progress']);
+  $canComplete = $req->status === 'in_progress' && $u->can('transition', [$req, 'completed']);
+  $canCancel = in_array('cancelled', $next) && $u->can('transition', [$req, 'cancelled']);
   $forward = $canAssign || $canStart || $canComplete;
 
   $flow = ['open' => 'Open', 'assigned' => 'Assigned', 'in_progress' => 'In progress', 'completed' => 'Completed'];

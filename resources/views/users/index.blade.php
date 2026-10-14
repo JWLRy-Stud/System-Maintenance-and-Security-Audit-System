@@ -20,6 +20,7 @@
         <td><x-role :value="$u->role" /></td>
         <td><x-status :value="$u->status" /></td>
         <td class="cell-actions">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ route('users.edit', $u) }}">Edit</a>
           @if($u->id !== auth()->id())
           <form method="POST" action="{{ route('users.toggle', $u) }}">@csrf
             <button class="btn btn-sm {{ $u->status === 'active' ? 'btn-danger-quiet' : 'btn-outline-secondary' }}">{{ $u->status === 'active' ? 'Deactivate' : 'Activate' }}</button>

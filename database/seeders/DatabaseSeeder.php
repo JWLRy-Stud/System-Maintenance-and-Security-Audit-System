@@ -9,11 +9,23 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    /** DEMO ONLY: change these passwords before any real deployment. */
+    /**
+     * DEMO ONLY: creates users (including an admin) with the password 'password', so it refuses to run in production.
+     * Create the first real admin as described in docs/DEPLOYMENT.md instead.
+     */
     public function run(): void
     {
+        if (app()->environment('production')) {
+            $this->command?->warn('Demo seeder skipped in production: it would create users with the password "password". See docs/DEPLOYMENT.md for the first-admin steps.');
+
+            return;
+        }
+
         foreach (['admin' => 'Admin', 'technician' => 'Tess Technician', 'auditor' => 'Aaron Auditor', 'staff' => 'Sam Staff'] as $role => $name) {
-            User::firstOrCreate(['email' => "{$role}@example.com"], ['name' => $name, 'password' => 'password', 'role' => $role, 'status' => 'active']);
+            if (! User::where('email', "{$role}@example.com")->exists()) {
+                // forceFill: role/status are not mass-assignable (see User::$fillable)
+                (new User)->forceFill(['name' => $name, 'email' => "{$role}@example.com", 'password' => 'password', 'role' => $role, 'status' => 'active'])->save();
+            }
         }
 
         foreach ([['LAP-001', 'Dell Latitude 5420', 'Laptop', 'IT Office'], ['SRV-001', 'File Server', 'Server', 'Server Room'], ['PRN-001', 'HP LaserJet', 'Printer', 'Admin Office']] as [$tag, $n, $c, $l]) {

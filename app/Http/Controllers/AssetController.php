@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AssetRequest;
 use App\Models\Asset;
+use App\Models\MaintenanceRequest;
 use App\Models\User;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
@@ -30,11 +31,15 @@ class AssetController extends Controller
         return redirect()->route('assets.show', $asset)->with('ok', 'Asset created.');
     }
 
-    public function show(Asset $asset)
+    public function show(Request $request, Asset $asset)
     {
-        $asset->load('assignedUser', 'maintenanceRequests.technician');
+        $asset->load('assignedUser');
 
-        return view('assets.show', compact('asset'));
+        // Only the maintenance history this user is allowed to open (same rule as the maintenance list).
+        $history = MaintenanceRequest::with('technician')->visibleTo($request->user())
+            ->where('asset_id', $asset->id)->latest()->get();
+
+        return view('assets.show', compact('asset', 'history'));
     }
 
     public function edit(Asset $asset) { return view('assets.form', ['asset' => $asset, 'users' => User::orderBy('name')->get()]); }

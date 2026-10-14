@@ -20,8 +20,8 @@ class ReportController extends Controller
 
     public function findingsCsv()
     {
-        // Neutralise spreadsheet formula injection (=, +, -, @ prefixes).
-        $safe = fn ($v) => preg_match('/^[=+\-@]/', (string) $v) ? "'".$v : $v;
+        // Neutralise spreadsheet formula injection (=, +, -, @, TAB and CR prefixes).
+        $safe = fn ($v) => preg_match('/^[=+\-@\t\r]/', (string) $v) ? "'".$v : $v;
 
         return response()->streamDownload(function () use ($safe) {
             $out = fopen('php://output', 'w');

@@ -3,6 +3,7 @@
 @section('content')
 @php
   $done = $audit->status === 'completed';
+  $canManage = auth()->user()->can('manage', $audit); // owner or admin; other auditors get a read-only view
   $total = $audit->checks->count();
   $answered = $audit->checks->where('result', '!=', 'pending')->count();
   $pct = $total ? round($answered / $total * 100) : 0;
@@ -12,11 +13,11 @@
 <x-page-header :title="$audit->title" :sub="$audit->scope">
   <x-slot:actions>
     <x-status :value="$audit->status" />
-    @unless($done)
+    @if(! $done && $canManage)
     <form method="POST" action="{{ route('audits.complete', $audit) }}">@csrf
       <button class="btn btn-primary" onclick="return confirm('Complete this audit? Checks can no longer be changed afterwards.')">Complete audit</button>
     </form>
-    @endunless
+    @endif
   </x-slot:actions>
 </x-page-header>
 
@@ -38,7 +39,7 @@
       <div class="check-q">
         <span>{{ $c->question }}</span>
       </div>
-      @if($done)
+      @if($done || ! $canManage)
         <div class="d-flex flex-wrap gap-2 align-items-center">
           <x-status :value="$c->result" />
           @if($c->notes)<span class="muted small-text">{{ $c->notes }}</span>@endif
@@ -82,7 +83,12 @@
           <td><x-status :value="$f->status" /></td>
           <td class="nowrap">{{ $f->assignee?->name ?? 'Unassigned' }}</td>
           <td class="nowrap {{ $late ? 'is-overdue' : '' }}">{{ $f->due_date?->format('j M Y') ?? '-' }}</td>
-          <td class="cell-actions"><x-finding-actions :finding="$f" /></td>
+          <td class="cell-actions">
+            <x-finding-actions :finding="$f" />
+            @can('assign', $f)
+              @if(in_array($f->status, ['open', 'in_progress']))<x-finding-assign :finding="$f" :users="$users" />@endif
+            @endcan
+          </td>
         </tr>
       @endforeach
       </tbody>
@@ -91,7 +97,7 @@
   @endif
 </div>
 
-@unless($done)
+@if(! $done && $canManage)
 <div class="section">
   <h2 class="section-title">Record a finding</h2>
   <form method="POST" action="{{ route('findings.store', $audit) }}" class="surface form-card">@csrf
@@ -121,7 +127,7 @@
     <div class="form-actions"><button class="btn btn-primary">Add finding</button></div>
   </form>
 </div>
-@endunless
+@endif
 
 @push('scripts')
 <script>
