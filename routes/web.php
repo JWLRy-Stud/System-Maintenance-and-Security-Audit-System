@@ -9,7 +9,8 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('guest');
 
 // 'active' signs out accounts that were deactivated while logged in; role gates and policies sit on top of it.
 // 'auth.session' signs out any session whose stored password hash no longer matches (after a password change).
-Route::middleware(['auth', 'auth.session', 'active'])->group(function () {
+// 'password.change' keeps people with an admin-chosen password on the change-password page until they replace it.
+Route::middleware(['auth', 'auth.session', 'active', 'password.change'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/account/password', [AccountController::class, 'edit'])->name('account.password');

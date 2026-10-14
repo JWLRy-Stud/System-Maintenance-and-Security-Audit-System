@@ -3,7 +3,7 @@
 @section('width', 'narrow')
 @section('content')
 <a class="back" href="{{ route('users.index') }}"><x-icon name="back" :size="16" />Users</a>
-<x-page-header title="Add user" sub="They can sign in straight away with the password you set here." />
+<x-page-header title="Add user" sub="They can sign in straight away with the password you set here, and will be asked to replace it first." />
 
 <form method="POST" action="{{ route('users.store') }}" class="surface form-card">@csrf
   <div class="form-grid">

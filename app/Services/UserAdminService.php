@@ -31,6 +31,9 @@ class UserAdminService
             }
             $target->fill($payload);
             $target->forceFill(['role' => $newRole]); // role is not mass-assignable (see User::$fillable)
+            if ($passwordReset && $target->id !== $actor->id) {
+                $target->forceFill(['must_change_password' => true]); // the admin knows it, so the owner must replace it
+            }
             $target->save();
 
             ActivityLogService::record('user.updated', $target);

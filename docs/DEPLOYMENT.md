@@ -23,12 +23,10 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 Document root must be `public/`. `storage/` and `bootstrap/cache/` must be writable.
 
 ## Accounts
-`db:seed` now refuses to run in production (it would create demo users with password `password`), so do not rely on it there. Create the first admin with (`role` and `status` are not mass-assignable, hence `forceFill`):
+`db:seed` now refuses to run in production (it would create demo users with password `password`), so do not rely on it there. Create the first admin with this command. It asks for the password with a hidden prompt, so the password never lands in your shell or tinker history, and it applies the password policy:
 ```
-php artisan tinker
->>> (new App\Models\User)->forceFill(['name'=>'Admin','email'=>'you@school.edu','password'=>'a-long-unique-password','role'=>'admin','status'=>'active'])->save();
+php artisan app:create-admin
 ```
-<!-- BUG B-28 [OPEN]: the first-admin step types the password into tinker, which saves it in the shell's psysh history file (~/.psysh/psysh_history). FIX: add an artisan command (e.g. `app:create-admin`) that asks for the password with a hidden prompt, and document that instead; or tell people to delete the history line. -->
 Then create other users from the Users page. Each user can change their password under "Password".
 
 ## Trusted proxies (`TRUSTED_PROXIES`)

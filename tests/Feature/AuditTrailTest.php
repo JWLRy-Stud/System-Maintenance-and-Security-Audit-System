@@ -39,6 +39,7 @@ class AuditTrailTest extends TestCase
 
     public function test_any_403_is_logged_as_denied_with_the_actor_and_route(): void
     {
+        /** @var User $staff */
         $staff = User::factory()->create(['role' => 'staff']);
 
         $this->actingAs($staff)->get('/users')->assertForbidden();        // role middleware
@@ -58,6 +59,7 @@ class AuditTrailTest extends TestCase
 
     public function test_each_request_gets_its_own_request_id(): void
     {
+        /** @var User $staff */
         $staff = User::factory()->create(['role' => 'staff']);
 
         $this->actingAs($staff)->get('/users');

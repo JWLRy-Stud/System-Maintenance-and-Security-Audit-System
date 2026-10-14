@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\RequirePasswordChange;
 use App\Http\Middleware\RoleMiddleware;
 use App\Services\ActivityLogService;
+use App\Support\TrustedProxies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -22,15 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // host's proxy IPs/CIDRs. Unset/empty = trust none (correct when the app is reached directly).
         // '*' trusts every proxy: only use it if the app can ONLY be reached through your host's proxy.
         // Set it as a real host environment variable: env() does not read .env once `config:cache` has run.
-        // BUG B-27 [OPEN]: only the "nothing trusted" default is covered by a test. FIX: add a test that builds the app with
-        //   TRUSTED_PROXIES set and checks X-Forwarded-For is honoured from that proxy IP only (and ignored from any other).
-        $trusted = trim((string) env('TRUSTED_PROXIES', ''));
-        $middleware->trustProxies(at: match (true) {
-            $trusted === '' => [],
-            $trusted === '*' => '*',
-            default => array_values(array_filter(array_map('trim', explode(',', $trusted)))),
-        });
-        $middleware->alias(['role' => RoleMiddleware::class, 'active' => EnsureUserIsActive::class]);
+        $middleware->trustProxies(at: TrustedProxies::parse((string) env('TRUSTED_PROXIES', '')));
+        $middleware->alias(['role' => RoleMiddleware::class, 'active' => EnsureUserIsActive::class, 'password.change' => RequirePasswordChange::class]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Every 403 (role middleware, policies, abort(403)) lands in the activity log as 'denied'. Returning null
