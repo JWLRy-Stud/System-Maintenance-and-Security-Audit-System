@@ -45,4 +45,45 @@ class AuthorizationTest extends TestCase
         $this->assertDatabaseCount('assets', 1);
         $this->assertDatabaseHas('activity_logs', ['action' => 'asset.created']);
     }
+
+    // ---- login lockout (found during the manual walkthrough: successful logins used to count towards the limit) ----
+
+    public function test_many_successful_logins_from_one_ip_are_not_blocked(): void
+    {
+        foreach (['admin', 'auditor', 'technician', 'staff', 'admin', 'staff', 'auditor'] as $role) {
+            $u = \App\Models\User::factory()->create(['role' => $role]);
+            $this->post('/login', ['email' => $u->email, 'password' => 'password'])->assertRedirect('/');
+            $this->post('/logout');
+        }
+    }
+
+    public function test_five_failed_attempts_lock_that_account_even_for_the_right_password(): void
+    {
+        $u = \App\Models\User::factory()->create(['role' => 'staff']);
+        $other = \App\Models\User::factory()->create(['role' => 'staff']);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->post('/login', ['email' => $u->email, 'password' => 'wrong'])->assertSessionHasErrors('email');
+        }
+        $this->post('/login', ['email' => $u->email, 'password' => 'password'])->assertSessionHasErrors('email');
+        $this->assertStringContainsString('Too many failed attempts', session('errors')->first('email'));
+        $this->assertGuest();
+        $this->assertDatabaseHas('activity_logs', ['action' => 'auth.login', 'outcome' => 'denied']);
+        // another account from the same IP is unaffected
+        $this->post('/login', ['email' => $other->email, 'password' => 'password'])->assertRedirect('/');
+    }
+
+    public function test_successful_login_resets_the_failed_counter(): void
+    {
+        $u = \App\Models\User::factory()->create(['role' => 'staff']);
+        for ($i = 0; $i < 4; $i++) {
+            $this->post('/login', ['email' => $u->email, 'password' => 'wrong']);
+        }
+        $this->post('/login', ['email' => $u->email, 'password' => 'password'])->assertRedirect('/');
+        $this->post('/logout');
+        for ($i = 0; $i < 4; $i++) {
+            $this->post('/login', ['email' => $u->email, 'password' => 'wrong'])->assertSessionHasErrors('email');
+        }
+        $this->post('/login', ['email' => $u->email, 'password' => 'password'])->assertRedirect('/');
+    }
 }

@@ -13,7 +13,6 @@
     })();
   </script>
   {{-- BUG B-17 [OPEN]: Bootstrap/fonts load from CDNs without Subresource Integrity. FIX: add integrity + crossorigin attributes or self-host (see docs/KNOWN_BUGS.md). --}}
-  {{-- BUG B-17 [OPEN]: Bootstrap/fonts load from CDNs without Subresource Integrity. FIX: add integrity + crossorigin attributes or self-host (see docs/KNOWN_BUGS.md). --}}
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">

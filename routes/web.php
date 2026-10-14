@@ -4,9 +4,8 @@ use App\Http\Controllers\{AccountController, ChecklistController, AssetControlle
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
-// BUG B-11 [OPEN]: throttle is keyed by IP only. Many users behind one IP lock each other out, and one account can be
-//   attacked from many IPs. FIX: RateLimiter::for('login') keyed by lowercase email + IP. (Also see B-10.)
-Route::post('/login', [AuthController::class, 'login'])->middleware(['guest', 'throttle:5,1']);
+// Login lockout (5 failed attempts per email + IP per minute) lives in AuthController::login, not in route throttling.
+Route::post('/login', [AuthController::class, 'login'])->middleware('guest');
 
 // 'active' signs out accounts that were deactivated while logged in; role gates and policies sit on top of it.
 Route::middleware(['auth', 'active'])->group(function () {

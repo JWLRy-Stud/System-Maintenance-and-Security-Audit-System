@@ -1,7 +1,7 @@
 # Project progress log (keep this updated; paste/attach it in every new Claude chat)
 
 ## Done
-- Foundation: Laravel 12, MySQL, Blade + Bootstrap 5, login (throttled), 4 roles via `RoleMiddleware`, seeded demo data
+- Foundation: Laravel 12, MySQL, Blade + Bootstrap 5, login (locks after 5 failed attempts per email+IP), 4 roles via `RoleMiddleware`, seeded demo data
 - Assets: CRUD (admin), search/filter, unique tag, retire instead of delete
 - Maintenance: request -> assign -> in progress -> completed (or cancelled), completion record, role/ownership checks
 - Security audits: audits, findings with severity/assignee/due date, finding workflow, CSV export, "My tasks" page for assignees
@@ -13,14 +13,15 @@
   - Admin can edit users (name, email, role) and reset passwords; role/password change or deactivation revokes sessions; last active admin and self-lockout protections (`UserAdminService`)
   - Finding assignment (`PATCH /findings/{id}/assignment`); assignees may only start work / resolve, never accept risk or reopen
   - Checklist templates can be edited/deleted (creator or admin); fail -> pass closes the linked finding, back to fail reopens it (`AuditCheckService`)
+  - Login lockout now counts only failed attempts per email+IP (was: every login per IP)
   - Bug fixes listed in docs/KNOWN_BUGS.md (marked FIXED)
 - Docs: SETUP (Ubuntu), WINDOWS_SETUP, DEPLOYMENT, AI_CONTEXT, HANDOFF_CHECKLIST
 
 ## Verified by us (update after running!)
 - [x] App runs locally on Ubuntu; login and dashboard work
-- [x] `php artisan test` passes: 52 tests, 236 assertions (run by Claude in a sandbox on PHP 8.3 + SQLite, Oct 2026). Re-run on your machine (MySQL) and record the result: ____
-- [ ] Pages added in stage 2 have only been rendered by automated tests, never viewed in a browser (assign panel on audit page, user edit page, checklist edit page)
-- [ ] Manual walkthrough of every role (see HANDOFF_CHECKLIST section 5)
+- [x] `php artisan test` passes: 55 tests, 279 assertions (run by Claude in a sandbox on PHP 8.3 + SQLite, Oct 2026). Re-run on your machine (MySQL) and record the result: ____
+- [ ] Stage 2 pages render without errors for every role (verified over HTTP) but have never been looked at in a browser (assign panel on audit page, user edit page, checklist edit page; see B-23)
+- [x] Manual walkthrough of every role, 79/79 steps, run by Claude over real HTTP in a sandbox (found and fixed B-11). Still to do by a human on a real machine: HANDOFF_CHECKLIST section 5, ticking the boxes
 - [ ] First deployment done (host: ____ )
 
 ## Known gaps / ideas (pick ONE per chat). Bugs live in docs/KNOWN_BUGS.md
