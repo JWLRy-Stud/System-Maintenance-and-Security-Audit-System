@@ -22,6 +22,8 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
+        <!-- BUG B-25 [OPEN]: tests run on in-memory SQLite but production is MySQL. Re-run the suite against MySQL
+             (lockForUpdate and collation behave differently). -->
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>

@@ -8,15 +8,19 @@ use App\Models\ChecklistTemplate;
 use App\Models\SecurityAudit;
 use App\Models\User;
 use App\Services\ActivityLogService;
+use App\Services\AuditCheckService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class SecurityAuditController extends Controller
 {
-    private function authorizeOwner(Request $r, SecurityAudit $audit): void
+    /** Only active people can be given remediation work. */
+    private function activeUser(): \Illuminate\Validation\Rules\Exists
     {
-        abort_unless($r->user()->role === 'admin' || $audit->auditor_id === $r->user()->id, 403);
+        return Rule::exists('users', 'id')->where('status', 'active');
     }
 
     public function index() { return view('audits.index', ['audits' => SecurityAudit::with('auditor')->withCount('findings')->latest()->paginate(15)]); }
@@ -59,6 +63,7 @@ class SecurityAuditController extends Controller
 
     public function show(SecurityAudit $audit)
     {
+        Gate::authorize('view', $audit);
         $audit->load('auditor', 'findings.assignee', 'checks');
 
         return view('audits.show', ['audit' => $audit, 'users' => User::where('status', 'active')->orderBy('name')->get()]);
@@ -66,7 +71,7 @@ class SecurityAuditController extends Controller
 
     public function complete(Request $request, SecurityAudit $audit)
     {
-        $this->authorizeOwner($request, $audit);
+        Gate::authorize('manage', $audit);
         if ($audit->status === 'completed') {
             throw ValidationException::withMessages(['status' => 'Audit is already completed.']);
         }
@@ -82,7 +87,7 @@ class SecurityAuditController extends Controller
 
     public function storeFinding(Request $request, SecurityAudit $audit)
     {
-        $this->authorizeOwner($request, $audit);
+        Gate::authorize('manage', $audit);
         if ($audit->status === 'completed') {
             throw ValidationException::withMessages(['title' => 'Cannot add findings to a completed audit.']);
         }
@@ -90,7 +95,7 @@ class SecurityAuditController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:5000',
             'severity' => 'required|in:'.implode(',', AuditFinding::SEVERITIES),
-            'assigned_to' => 'nullable|exists:users,id',
+            'assigned_to' => ['nullable', $this->activeUser()],
             'due_date' => 'nullable|date',
         ]);
         $finding = $audit->findings()->create($data + ['status' => 'open']);
@@ -99,11 +104,11 @@ class SecurityAuditController extends Controller
         return back()->with('ok', 'Finding recorded.');
     }
 
-    /** Answer a checklist item. A "fail" automatically raises a linked finding (once). */
-    public function updateCheck(Request $request, AuditCheck $check)
+    /** Answer a checklist item. A "fail" raises a linked finding; changing it back closes that finding (see AuditCheckService). */
+    public function updateCheck(Request $request, AuditCheck $check, AuditCheckService $service)
     {
         $audit = $check->audit;
-        $this->authorizeOwner($request, $audit);
+        Gate::authorize('manage', $audit);
         if ($audit->status === 'completed') {
             throw ValidationException::withMessages(['result' => 'Audit is completed; checklist is locked.']);
         }
@@ -113,31 +118,23 @@ class SecurityAuditController extends Controller
             'severity' => 'required_if:result,fail|nullable|in:'.implode(',', AuditFinding::SEVERITIES),
         ]);
 
-        DB::transaction(function () use ($check, $audit, $data) {
-            $check->update(['result' => $data['result'], 'notes' => $data['notes'] ?? null]);
-            if ($data['result'] === 'fail' && ! $check->finding_id) {
-                $finding = $audit->findings()->create([
-                    'title' => mb_substr($check->question, 0, 255), 'description' => $data['notes'] ?? null,
-                    'severity' => $data['severity'], 'status' => 'open',
-                ]);
-                $check->update(['finding_id' => $finding->id]);
-                ActivityLogService::record('finding.created', $finding);
-            }
-            ActivityLogService::record('check.answered', $check);
-        });
+        $service->answer($check, $data);
 
         return back()->with('ok', 'Checklist item saved.');
     }
 
     public function updateFinding(Request $request, AuditFinding $finding)
     {
-        $user = $request->user();
-        abort_unless($user->role === 'admin' || $finding->audit->auditor_id === $user->id || $finding->assigned_to === $user->id, 403);
+        Gate::authorize('update', $finding); // must be the audit owner, the assignee or an admin
         $to = $request->validate(['status' => 'required|in:open,in_progress,resolved,accepted_risk'])['status'];
 
         if (! in_array($to, AuditFinding::TRANSITIONS[$finding->status] ?? [], true)) {
             ActivityLogService::record("finding.{$to}", $finding, 'denied');
             throw ValidationException::withMessages(['status' => "Cannot move a {$finding->status} finding to {$to}."]);
+        }
+        if (Gate::denies('transition', [$finding, $to])) {
+            ActivityLogService::record("finding.{$to}", $finding, 'denied');
+            abort(403, 'Only the auditor can do that.');
         }
 
         DB::transaction(function () use ($finding, $to) {
@@ -146,5 +143,23 @@ class SecurityAuditController extends Controller
         });
 
         return back()->with('ok', 'Finding updated.');
+    }
+
+    /** Choose or change who fixes a finding and by when (also needed for findings raised automatically by failed checks). */
+    public function assignFinding(Request $request, AuditFinding $finding)
+    {
+        Gate::authorize('assign', $finding);
+        if (! in_array($finding->status, ['open', 'in_progress'], true)) {
+            throw ValidationException::withMessages(['assigned_to' => 'A closed finding cannot be reassigned.']);
+        }
+        $data = $request->validate([
+            'assigned_to' => ['nullable', $this->activeUser()],
+            'due_date' => 'nullable|date',
+        ]);
+
+        $finding->update(['assigned_to' => $data['assigned_to'] ?? null, 'due_date' => $data['due_date'] ?? null]);
+        ActivityLogService::record('finding.assigned', $finding);
+
+        return back()->with('ok', 'Finding assignment saved.');
     }
 }

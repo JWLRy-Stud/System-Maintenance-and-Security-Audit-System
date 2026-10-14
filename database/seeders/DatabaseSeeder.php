@@ -9,7 +9,11 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    /** DEMO ONLY: change these passwords before any real deployment. */
+    /**
+     * DEMO ONLY: change these passwords before any real deployment.
+     * BUG B-14 [OPEN]: creates an admin with the password 'password'. FIX: return early (with a warning) when
+     *   app()->environment('production'); re-check the first-admin steps in docs/DEPLOYMENT.md.
+     */
     public function run(): void
     {
         foreach (['admin' => 'Admin', 'technician' => 'Tess Technician', 'auditor' => 'Aaron Auditor', 'staff' => 'Sam Staff'] as $role => $name) {

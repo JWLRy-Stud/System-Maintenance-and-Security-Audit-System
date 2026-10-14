@@ -9,19 +9,13 @@ use App\Models\User;
 use App\Services\ActivityLogService;
 use App\Services\MaintenanceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class MaintenanceController extends Controller
 {
-    private function visibleTo($user)
-    {
-        return MaintenanceRequest::with('asset', 'requester', 'technician')
-            ->when($user->role === 'technician', fn ($q) => $q->where('technician_id', $user->id))
-            ->when($user->role === 'staff', fn ($q) => $q->where('requester_id', $user->id));
-    }
-
     public function index(Request $request)
     {
-        $items = $this->visibleTo($request->user())
+        $items = MaintenanceRequest::with('asset', 'requester', 'technician')->visibleTo($request->user())
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
             ->latest()->paginate(15)->withQueryString();
 
@@ -43,7 +37,7 @@ class MaintenanceController extends Controller
 
     public function show(Request $request, MaintenanceRequest $maintenance)
     {
-        abort_unless($this->visibleTo($request->user())->whereKey($maintenance->id)->exists(), 403);
+        Gate::authorize('view', $maintenance);
         $maintenance->load('asset', 'requester', 'technician', 'records.performer');
 
         return view('maintenance.show', [
@@ -54,7 +48,7 @@ class MaintenanceController extends Controller
 
     public function transition(Request $request, MaintenanceRequest $maintenance, MaintenanceService $service)
     {
-        abort_unless($this->visibleTo($request->user())->whereKey($maintenance->id)->exists(), 403);
+        Gate::authorize('view', $maintenance);
 
         $data = $request->validate([
             'status' => ['required', 'in:assigned,in_progress,completed,cancelled'],

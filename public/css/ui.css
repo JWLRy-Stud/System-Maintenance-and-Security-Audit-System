@@ -395,3 +395,15 @@ nav[aria-label] .small.text-muted, nav[aria-label] p.small { color: var(--ink-3)
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* BUG B-23 [OPEN]: never viewed in a browser. Check this panel on mobile width and in dark mode.
+   Inline "Assign" disclosure on finding rows (audits/show). Expands in place: .table-wrap clips overflow, so no popover. */
+.assign { display: inline-block; vertical-align: middle; margin-left: 4px; }
+.assign > summary { list-style: none; cursor: pointer; }
+.assign > summary::-webkit-details-marker { display: none; }
+.cell-actions .assign-form {
+  display: grid; gap: 6px; margin: 8px 0 0; padding: 12px; min-width: 220px;
+  text-align: left; white-space: normal;
+  background: var(--card); border: 1px solid var(--line-2); border-radius: 10px;
+}
+.assign-form .form-label { margin: 0; font-size: .8rem; }

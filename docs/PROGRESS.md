@@ -7,22 +7,32 @@
 - Security audits: audits, findings with severity/assignee/due date, finding workflow, CSV export, "My tasks" page for assignees
 - Audit checklist templates: auditors create templates (one question per line), pick one when starting an audit (questions are copied), answer pass/fail/N-A; a fail raises a linked finding; audit cannot complete while items are pending
 - Activity log (append-only, admin view with filters), dashboard, user management (deactivate), change password
+- Stage 2 (authority + checklist management), see docs/PERMISSIONS.md:
+  - Laravel Policies (`app/Policies`) are the single source of "who may do what"; middleware is only the coarse gate; views use `@can`
+  - `EnsureUserIsActive` middleware: a user deactivated while signed in is signed out on the next request
+  - Admin can edit users (name, email, role) and reset passwords; role/password change or deactivation revokes sessions; last active admin and self-lockout protections (`UserAdminService`)
+  - Finding assignment (`PATCH /findings/{id}/assignment`); assignees may only start work / resolve, never accept risk or reopen
+  - Checklist templates can be edited/deleted (creator or admin); fail -> pass closes the linked finding, back to fail reopens it (`AuditCheckService`)
+  - Bug fixes listed in docs/KNOWN_BUGS.md (marked FIXED)
 - Docs: SETUP (Ubuntu), WINDOWS_SETUP, DEPLOYMENT, AI_CONTEXT, HANDOFF_CHECKLIST
 
 ## Verified by us (update after running!)
 - [x] App runs locally on Ubuntu; login and dashboard work
-- [ ] `php artisan test` passes (record the result here: ____ )
+- [x] `php artisan test` passes: 52 tests, 236 assertions (run by Claude in a sandbox on PHP 8.3 + SQLite, Oct 2026). Re-run on your machine (MySQL) and record the result: ____
+- [ ] Pages added in stage 2 have only been rendered by automated tests, never viewed in a browser (assign panel on audit page, user edit page, checklist edit page)
 - [ ] Manual walkthrough of every role (see HANDOFF_CHECKLIST section 5)
 - [ ] First deployment done (host: ____ )
 
-## Known gaps / ideas (pick ONE per chat)
-1. Checklist templates cannot be edited or deleted yet; checks have no evidence upload; changing a check from fail back to pass does not close its finding.
-2. Roles are enforced with middleware + controller checks, not Laravel Policies.
-3. No email notifications, file/evidence uploads, or pagination on the audit detail page.
-4. Activity log immutability is enforced at the model level only (production: also restrict DB grants).
-5. No password reset by email (admin can deactivate/create users).
-6. Reports are limited to the findings CSV and the filtered activity log.
+## Known gaps / ideas (pick ONE per chat). Bugs live in docs/KNOWN_BUGS.md
+1. Checks have no evidence upload (needs storage, file validation, access control).
+2. No email notifications, or pagination on the audit detail page.
+3. Activity log immutability is enforced at the model level only (production: also restrict DB grants).
+4. No password reset by email (admin can reset passwords by hand).
+5. Reports are limited to the findings CSV and the filtered activity log.
+6. Denied attempts on policy-protected actions are logged only for maintenance and finding transitions.
 
 ## Decisions
 - One role per user (`users.role`), not a roles table.
+- Authorization lives in `app/Policies/*` (admin passes via `AdminBypass`); the legality of a status move is checked separately in the service/controller.
+- Auditors can read every audit but change only their own (admin: all). Assignees of a finding (any role) can only start work and resolve.
 - Maintenance transitions: `MaintenanceRequest::TRANSITIONS`; finding transitions: `AuditFinding::TRANSITIONS`.
